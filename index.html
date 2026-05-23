@@ -174,7 +174,7 @@
         // =====================
         // Отрисовка вершин (сферы)
         // =====================
-        const vertexRadius = 0.035;
+        const vertexRadius = 0.005;
         const vertexGeometry = new THREE.SphereGeometry(vertexRadius, 32, 32);
 
         V.forEach((pos, i) => {
@@ -206,7 +206,7 @@
             return cylinder;
         }
 
-        const edgeRadius = 0.012;
+        const edgeRadius = 0.002;
         edges.forEach(([i, j]) => {
             const cyl = createCylinderBetween(V[i], V[j], edgeRadius, edgeMaterial.clone());
             cyl.castShadow = true;
