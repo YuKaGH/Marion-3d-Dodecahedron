@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ромбододекаэдр — центральный многогранник 3D-симплекса</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            pointer-events: none;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #info h2 {
+            margin: 0 0 5px 0;
+            font-size: 18px;
+        }
+        .controls-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: #ccc;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        <h2>Ромбододекаэдр</h2>
+        Центральный многогранник, полученный<br>
+        трисекцией всех рёбер правильного тетраэдра.<br>
+        <b>14 вершин</b> · <b>24 ребра</b> · <b>12 граней</b> (дельтоиды)
+    </div>
+    <div class="controls-hint">🖱️ Вращение · 📜 Зум · 🖱️ ПКМ — перемещение</div>
+
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+        // =====================
+        // Координаты вершин (точные)
+        // =====================
+        const V = [
+            new THREE.Vector3(4/7, 4*Math.sqrt(3)/21, 2*Math.sqrt(6)/21),      // V1
+            new THREE.Vector3(3/7, 4*Math.sqrt(3)/21, 2*Math.sqrt(6)/21),      // V2
+            new THREE.Vector3(1/2, 5*Math.sqrt(3)/42, 2*Math.sqrt(6)/21),      // V3
+            new THREE.Vector3(1/2, Math.sqrt(3)/6, Math.sqrt(6)/21),           // V4
+            new THREE.Vector3(1/2, 2*Math.sqrt(3)/9, Math.sqrt(6)/9),          // V5
+            new THREE.Vector3(7/12, 5*Math.sqrt(3)/36, Math.sqrt(6)/9),        // V6
+            new THREE.Vector3(7/12, 7*Math.sqrt(3)/36, Math.sqrt(6)/18),       // V7
+            new THREE.Vector3(5/12, 5*Math.sqrt(3)/36, Math.sqrt(6)/9),        // V8
+            new THREE.Vector3(5/12, 7*Math.sqrt(3)/36, Math.sqrt(6)/18),       // V9
+            new THREE.Vector3(1/2, Math.sqrt(3)/9, Math.sqrt(6)/18),           // V10
+            new THREE.Vector3(1/2, Math.sqrt(3)/6, 2*Math.sqrt(6)/15),         // V11
+            new THREE.Vector3(1/2, 7*Math.sqrt(3)/30, Math.sqrt(6)/15),        // V12
+            new THREE.Vector3(3/5, 2*Math.sqrt(3)/15, Math.sqrt(6)/15),        // V13
+            new THREE.Vector3(2/5, 2*Math.sqrt(3)/15, Math.sqrt(6)/15)         // V14
+        ];
+
+        // =====================
+        // Список рёбер
+        // =====================
+        const edges = [
+            [0,4], [0,5], [0,6],
+            [1,4], [1,7], [1,8],
+            [2,5], [2,7], [2,9],
+            [3,6], [3,8], [3,9],
+            [4,10], [4,11],
+            [5,10], [5,12],
+            [6,11], [6,12],
+            [7,10], [7,13],
+            [8,11], [8,13],
+            [9,12], [9,13]
+        ];
+
+        // Подписи вершин
+        const labels = ["V₁", "V₂", "V₃", "V₄", "V₅", "V₆", "V₇", "V₈", "V₉", "V₁₀", "V₁₁", "V₁₂", "V₁₃", "V₁₄"];
+
+        // =====================
+        // Сцена
+        // =====================
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x1a1a2e);
+
+        // =====================
+        // Камера
+        // =====================
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10);
+        camera.position.set(2.5, 1.8, 2.0);
+        camera.lookAt(0.5, 0.2, 0.1);
+
+        // =====================
+        // Рендереры
+        // =====================
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.shadowMap.enabled = true;
+        document.body.appendChild(renderer.domElement);
+
+        const labelRenderer = new CSS2DRenderer();
+        labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        labelRenderer.domElement.style.position = 'absolute';
+        labelRenderer.domElement.style.top = '0px';
+        labelRenderer.domElement.style.pointerEvents = 'none';
+        document.body.appendChild(labelRenderer.domElement);
+
+        // =====================
+        // Управление
+        // =====================
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.target.set(0.5, 0.2, 0.1);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.08;
+        controls.update();
+
+        // =====================
+        // Освещение
+        // =====================
+        const ambientLight = new THREE.AmbientLight(0x404060, 1.8);
+        scene.add(ambientLight);
+        
+        const dirLight1 = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight1.position.set(5, 10, 5);
+        scene.add(dirLight1);
+        
+        const dirLight2 = new THREE.DirectionalLight(0x8888ff, 1.0);
+        dirLight2.position.set(-3, -1, -2);
+        scene.add(dirLight2);
+
+        // =====================
+        // Материалы
+        // =====================
+        const vertexMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff4444,
+            roughness: 0.3,
+            metalness: 0.1,
+            emissive: 0x330000
+        });
+
+        const edgeMaterial = new THREE.MeshStandardMaterial({
+            color: 0x4488ff,
+            roughness: 0.4,
+            metalness: 0.3,
+            emissive: 0x001133
+        });
+
+        // =====================
+        // Отрисовка вершин (сферы)
+        // =====================
+        const vertexRadius = 0.035;
+        const vertexGeometry = new THREE.SphereGeometry(vertexRadius, 32, 32);
+
+        V.forEach((pos, i) => {
+            const sphere = new THREE.Mesh(vertexGeometry, vertexMaterial.clone());
+            sphere.position.copy(pos);
+            sphere.castShadow = true;
+            sphere.receiveShadow = true;
+            scene.add(sphere);
+        });
+
+        // =====================
+        // Отрисовка рёбер (цилиндры)
+        // =====================
+        function createCylinderBetween(point1, point2, radius, material) {
+            const direction = new THREE.Vector3().subVectors(point2, point1);
+            const length = direction.length();
+            const midPoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
+            
+            const cylinderGeometry = new THREE.CylinderGeometry(radius, radius, length, 12);
+            const cylinder = new THREE.Mesh(cylinderGeometry, material);
+            
+            cylinder.position.copy(midPoint);
+            
+            // Ориентируем цилиндр вдоль направления
+            const axis = new THREE.Vector3(0, 1, 0);
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction.normalize());
+            cylinder.setRotationFromQuaternion(quaternion);
+            
+            return cylinder;
+        }
+
+        const edgeRadius = 0.012;
+        edges.forEach(([i, j]) => {
+            const cyl = createCylinderBetween(V[i], V[j], edgeRadius, edgeMaterial.clone());
+            cyl.castShadow = true;
+            cyl.receiveShadow = true;
+            scene.add(cyl);
+        });
+
+        // =====================
+        // Подписи вершин
+        // =====================
+        V.forEach((pos, i) => {
+            const div = document.createElement('div');
+            div.textContent = labels[i];
+            div.style.color = '#ffffff';
+            div.style.fontSize = '13px';
+            div.style.fontWeight = 'bold';
+            div.style.textShadow = '0 0 6px rgba(0,0,0,0.8)';
+            div.style.background = 'rgba(30,30,60,0.85)';
+            div.style.padding = '2px 7px';
+            div.style.borderRadius = '10px';
+            
+            const label = new CSS2DObject(div);
+            label.position.copy(pos).add(new THREE.Vector3(0.06, 0.04, 0.03));
+            scene.add(label);
+        });
+
+        // =====================
+        // Сетка на полу
+        // =====================
+        const gridHelper = new THREE.PolarGridHelper(2.5, 32, 24, 64, 0x333355, 0x222244);
+        gridHelper.position.set(0.5, -0.3, 0.1);
+        scene.add(gridHelper);
+
+        // =====================
+        // Анимация
+        // =====================
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            labelRenderer.render(scene, camera);
+        }
+        animate();
+
+        // =====================
+        // Обработка изменения размера окна
+        // =====================
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            labelRenderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
