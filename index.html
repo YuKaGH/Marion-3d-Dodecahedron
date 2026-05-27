@@ -61,7 +61,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-        import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+        import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 
         // =====================
         // Координаты вершин (точные)
@@ -99,9 +99,6 @@
             [9,12], [9,13]
         ];
 
-        // Подписи вершин
-        const labels = ["V₁", "V₂", "V₃", "V₄", "V₅", "V₆", "V₇", "V₈", "V₉", "V₁₀", "V₁₁", "V₁₂", "V₁₃", "V₁₄"];
-
         // =====================
         // Сцена
         // =====================
@@ -109,10 +106,10 @@
         scene.background = new THREE.Color(0x1a1a2e);
 
         // =====================
-        // Камера
+        // Камера (приближена)
         // =====================
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10);
-        camera.position.set(2.5, 1.8, 2.0);
+        camera.position.set(1.2, 0.8, 1.0);   // было 2.5, 1.8, 2.0
         camera.lookAt(0.5, 0.2, 0.1);
 
         // =====================
@@ -124,12 +121,8 @@
         renderer.shadowMap.enabled = true;
         document.body.appendChild(renderer.domElement);
 
-        const labelRenderer = new CSS2DRenderer();
-        labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        labelRenderer.domElement.style.position = 'absolute';
-        labelRenderer.domElement.style.top = '0px';
-        labelRenderer.domElement.style.pointerEvents = 'none';
-        document.body.appendChild(labelRenderer.domElement);
+        // CSS2 рендерер больше не нужен (убраны подписи), но оставим на случай будущих добавлений
+        // В данной версии он не используется, можно удалить.
 
         // =====================
         // Управление
@@ -155,7 +148,24 @@
         scene.add(dirLight2);
 
         // =====================
-        // Материалы
+        // Заливка граней (выпуклая оболочка)
+        // =====================
+        const faceGeometry = new ConvexGeometry(V);
+        const faceMaterial = new THREE.MeshStandardMaterial({
+            color: 0x44aaff,
+            roughness: 0.4,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.55,
+            side: THREE.DoubleSide  // чтобы грани были видны с обеих сторон при прозрачности
+        });
+        const faceMesh = new THREE.Mesh(faceGeometry, faceMaterial);
+        faceMesh.castShadow = true;
+        faceMesh.receiveShadow = true;
+        scene.add(faceMesh);
+
+        // =====================
+        // Материалы для вершин и рёбер
         // =====================
         const vertexMaterial = new THREE.MeshStandardMaterial({
             color: 0xff4444,
@@ -177,7 +187,7 @@
         const vertexRadius = 0.0025;
         const vertexGeometry = new THREE.SphereGeometry(vertexRadius, 32, 32);
 
-        V.forEach((pos, i) => {
+        V.forEach((pos) => {
             const sphere = new THREE.Mesh(vertexGeometry, vertexMaterial.clone());
             sphere.position.copy(pos);
             sphere.castShadow = true;
@@ -198,7 +208,6 @@
             
             cylinder.position.copy(midPoint);
             
-            // Ориентируем цилиндр вдоль направления
             const axis = new THREE.Vector3(0, 1, 0);
             const quaternion = new THREE.Quaternion().setFromUnitVectors(axis, direction.normalize());
             cylinder.setRotationFromQuaternion(quaternion);
@@ -215,39 +224,12 @@
         });
 
         // =====================
-        // Подписи вершин
-        // =====================
-        V.forEach((pos, i) => {
-            const div = document.createElement('div');
-            div.textContent = labels[i];
-            div.style.color = '#ffffff';
-            div.style.fontSize = '13px';
-            div.style.fontWeight = 'bold';
-            div.style.textShadow = '0 0 6px rgba(0,0,0,0.8)';
-            div.style.background = 'rgba(30,30,60,0.85)';
-            div.style.padding = '2px 7px';
-            div.style.borderRadius = '10px';
-            
-            const label = new CSS2DObject(div);
-            label.position.copy(pos).add(new THREE.Vector3(0.06, 0.04, 0.03));
-            scene.add(label);
-        });
-
-        // =====================
-        // Сетка на полу
-        // =====================
-        const gridHelper = new THREE.PolarGridHelper(2.5, 32, 24, 64, 0x333355, 0x222244);
-        gridHelper.position.set(0.5, -0.3, 0.1);
-        scene.add(gridHelper);
-
-        // =====================
         // Анимация
         // =====================
         function animate() {
             requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
-            labelRenderer.render(scene, camera);
         }
         animate();
 
@@ -258,7 +240,6 @@
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
-            labelRenderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
 </body>
